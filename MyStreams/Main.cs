@@ -117,6 +117,12 @@ namespace MyStreams
 			{
 				OpenChannel(_previousChannel.Value);
 			}
+			else if (e.KeyCode == Keys.C)
+			{
+				SetStartTimeToCurrentHalfHour();
+
+				DisplayListings();
+			}
 		}
 
 		private void Main_FormClosed(object sender, FormClosedEventArgs e)
@@ -282,8 +288,7 @@ namespace MyStreams
 			listingsGrid.Rows.Clear();
 			listingsGrid.Columns.Clear();
 
-			_startTime = GetHalfHour(DateTime.Now);
-			_endTime = _startTime + ColumnTimeValue.MultiplyBy(NumberOfColumns);
+			SetStartTimeToCurrentHalfHour();
 
 			var cursor = Cursor;
 			Cursor = Cursors.WaitCursor;
@@ -299,6 +304,12 @@ namespace MyStreams
 					DisplayListings();
 				});
 			});
+		}
+
+		private void SetStartTimeToCurrentHalfHour()
+		{
+			_startTime = GetHalfHour(DateTime.Now);
+			_endTime = _startTime + ColumnTimeValue.MultiplyBy(NumberOfColumns);
 		}
 
 		private void DisplayListings()
