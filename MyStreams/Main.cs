@@ -16,6 +16,9 @@ namespace MyStreams
 
 		private IE _browser;
 		private IntPtr _browserHWnd;
+		private ChannelListing[] _listings;
+		private DateTime _startTime;
+		private DateTime _endTime;
 
 		public Main()
 		{
@@ -93,6 +96,20 @@ namespace MyStreams
 				WindowState = FormWindowState.Maximized;
 
 				e.Handled = true;
+			}
+			else if (e.KeyCode == Keys.Right)
+			{
+				_startTime = _startTime.Add(ColumnTimeValue);
+				_endTime = _endTime.Add(ColumnTimeValue);
+
+				DisplayListings();
+			}
+			else if (e.KeyCode == Keys.Left)
+			{
+				_startTime = _startTime.Add(-ColumnTimeValue);
+				_endTime = _endTime.Add(-ColumnTimeValue);
+
+				DisplayListings();
 			}
 		}
 
@@ -250,73 +267,83 @@ namespace MyStreams
 
 		private void RetrieveAndDisplayListings()
 		{
-			listingsGrid.Columns.Clear();
 			listingsGrid.Rows.Clear();
+			listingsGrid.Columns.Clear();
 
-			listingsGrid.Columns.Add(new DataGridViewTextBoxColumn {AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCellsExceptHeader, SortMode = DataGridViewColumnSortMode.NotSortable});
-
-			var startTime = GetHalfHour(DateTime.Now);
-
-			var currentTime = startTime;
-			for (var i = 0; i < NumberOfColumns; ++i)
-			{
-				listingsGrid.Columns.Add(new DataGridViewTextBoxColumn {HeaderText = currentTime.ToString("h:mm"), SortMode = DataGridViewColumnSortMode.NotSortable});
-				currentTime = currentTime.Add(ColumnTimeValue);
-			}
-
-			var endTime = currentTime;
+			_startTime = GetHalfHour(DateTime.Now);
+			_endTime = _startTime + ColumnTimeValue.MultiplyBy(NumberOfColumns);
 
 			var cursor = Cursor;
 			Cursor = Cursors.WaitCursor;
 
 			PerformInSeparateThread(() =>
 			{
-				var listings = GoogleCalendarChannelListingsRetriever.GetChannelListings(startTime, endTime)
-					.Select(x => new ChannelListing {Channel = x.Channel, Events = x.Events.Where(y => IsInTimeSlot(y, startTime, endTime)).ToArray()})
-					.Where(x => x.Events.Any())
-					.ToArray();
+				_listings = GoogleCalendarChannelListingsRetriever.GetChannelListings(_startTime - ColumnTimeValue.MultiplyBy(5), _endTime + ColumnTimeValue.MultiplyBy(10));
 
 				Invoke(() =>
 				{
-				    Cursor = cursor;
-					
-					var rowHeight = (int) Math.Round(CreateGraphics().MeasureString("Ay", Font).Height * 1.1);
+					Cursor = cursor;
 
-					foreach (var channel in listings)
-					{
-						var row = new DataGridViewRow {Height = rowHeight};
-						row.Cells.Add(new DataGridViewTextBoxCell
-						{
-							Value = channel.Channel,
-							Style = new DataGridViewCellStyle {SelectionBackColor = Color.FromArgb(183, 210, 255), Alignment = DataGridViewContentAlignment.MiddleCenter}
-						});
-
-						currentTime = startTime;
-						for (var i = 0; i < NumberOfColumns; ++i)
-						{
-							var nextTime = currentTime.Add(ColumnTimeValue);
-							var events = channel.Events.Where(x => IsInTimeSlot(x, currentTime, nextTime)).OrderBy(x => x.EndTime - x.StartTime).ToArray();
-
-							var cell = new DataGridViewTextBoxCell();
-							if (events.Length > 0)
-							{
-								cell.Tag = events[0].Title;
-								cell.ToolTipText = string.Join("\n", events.Select(x => x.ToString()));
-								cell.Style = new DataGridViewCellStyle {BackColor = events[0].Color.ChangeSaturation(0.25), SelectionBackColor = events[0].Color};
-							}
-							else
-							{
-								cell.Style = new DataGridViewCellStyle {SelectionBackColor = Color.FromArgb(183, 210, 255)};
-							}
-
-							row.Cells.Add(cell);
-							currentTime = nextTime;
-						}
-
-						listingsGrid.Rows.Add(row);
-					}
+					DisplayListings();
 				});
 			});
+		}
+
+		private void DisplayListings()
+		{
+			var listings = _listings
+				.Select(x => new ChannelListing {Channel = x.Channel, Events = x.Events.Where(y => IsInTimeSlot(y, _startTime, _endTime)).ToArray()})
+				.ToArray();
+
+			listingsGrid.Rows.Clear();
+			listingsGrid.Columns.Clear();
+
+			listingsGrid.Columns.Add(new DataGridViewTextBoxColumn {AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCellsExceptHeader, SortMode = DataGridViewColumnSortMode.NotSortable});
+
+			var currentTime = _startTime;
+			for (var i = 0; i < NumberOfColumns; ++i)
+			{
+				listingsGrid.Columns.Add(new DataGridViewTextBoxColumn {HeaderText = currentTime.ToString("h:mm"), SortMode = DataGridViewColumnSortMode.NotSortable});
+				currentTime = currentTime.Add(ColumnTimeValue);
+			}
+
+			var rowHeight = (int) Math.Round(CreateGraphics().MeasureString("Ay", Font).Height*1.1);
+
+			foreach (var channel in listings)
+			{
+			    var row = new DataGridViewRow {Height = rowHeight};
+			    row.Cells.Add(new DataGridViewTextBoxCell
+			    {
+					Value = channel.Channel,
+					Style = new DataGridViewCellStyle {SelectionBackColor = Color.FromArgb(183, 210, 255), Alignment = DataGridViewContentAlignment.MiddleCenter}
+			    });
+
+			    currentTime = _startTime;
+			    for (var i = 0; i < NumberOfColumns; ++i)
+			    {
+					var nextTime = currentTime.Add(ColumnTimeValue);
+					var events = channel.Events
+						.Where(x => IsInTimeSlot(x, currentTime, nextTime)).OrderBy(x => x.EndTime - x.StartTime)
+						.ToArray();
+
+					var cell = new DataGridViewTextBoxCell();
+					if (events.Length > 0)
+					{
+						cell.Tag = events[0].Title;
+						cell.ToolTipText = string.Join("\n", events.Select(x => x.ToString()));
+						cell.Style = new DataGridViewCellStyle {BackColor = events[0].Color.ChangeSaturation(0.25), SelectionBackColor = events[0].Color};
+					}
+					else
+					{
+						cell.Style = new DataGridViewCellStyle {SelectionBackColor = Color.FromArgb(183, 210, 255)};
+					}
+
+					row.Cells.Add(cell);
+					currentTime = nextTime;
+				}
+
+				listingsGrid.Rows.Add(row);
+			}
 		}
 
 		private static bool IsInTimeSlot(Event @event, DateTime startTime, DateTime endTime)
