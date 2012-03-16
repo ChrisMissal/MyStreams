@@ -19,6 +19,8 @@ namespace MyStreams
 		private ChannelListing[] _listings;
 		private DateTime _startTime;
 		private DateTime _endTime;
+		private int? _previousChannel;
+		private int? _currentChannel;
 
 		public Main()
 		{
@@ -111,6 +113,10 @@ namespace MyStreams
 
 				DisplayListings();
 			}
+			else if (e.KeyCode == Keys.P && _previousChannel != null)
+			{
+				OpenChannel(_previousChannel.Value);
+			}
 		}
 
 		private void Main_FormClosed(object sender, FormClosedEventArgs e)
@@ -179,36 +185,42 @@ namespace MyStreams
 			var selectedRow = GetSelectedRow();
 
 			if (selectedRow != null)
+				OpenChannel((int) selectedRow.Cells[0].Value);
+		}
+
+		private void OpenChannel(int channel)
+		{
+			var screen = Screen.FromControl(this);
+
+			if (_browser != null && !Win32.IsWindow(_browserHWnd))
 			{
-				var screen = Screen.FromControl(this);
-
-				if (_browser != null && !Win32.IsWindow(_browserHWnd))
-				{
-					_browser.Dispose();
-					_browser = null;
-				}
-
-				if (_browser == null)
-				{
-					_browser = new IE(true);
-					_browserHWnd = _browser.hWnd;
-
-					MoveToScreen(_browserHWnd, screen);
-					((IWebBrowser2) _browser.InternetExplorer).FullScreen = true;
-				}
-
-				Win32.SetForegroundWindow(_browserHWnd);
-
-				var tld = "tv";
-
-				var url = "http://mystreams." + tld + "/go/stream.php?hd=1&server=2&stream=" + selectedRow.Cells[0].Value;
-				_browser.GoTo(url);
-
-				_browser.DomContainer.Eval("$f(0).play(); document.body.scroll = 'no';");
-
-				var screenRectangle = screen.Bounds;
-				Cursor.Position = new Point(screenRectangle.Right, screenRectangle.Height/2);
+				_browser.Dispose();
+				_browser = null;
 			}
+
+			if (_browser == null)
+			{
+				_browser = new IE(true);
+				_browserHWnd = _browser.hWnd;
+
+				MoveToScreen(_browserHWnd, screen);
+				((IWebBrowser2) _browser.InternetExplorer).FullScreen = true;
+			}
+
+			Win32.SetForegroundWindow(_browserHWnd);
+
+			const string tld = "tv";
+
+			var url = "http://mystreams." + tld + "/go/stream.php?hd=1&server=2&stream=" + channel;
+			_browser.GoTo(url);
+
+			_browser.DomContainer.Eval("$f(0).play(); document.body.scroll = 'no';");
+
+			var screenRectangle = screen.Bounds;
+			Cursor.Position = new Point(screenRectangle.Right, screenRectangle.Height/2);
+
+			_previousChannel = _currentChannel;
+			_currentChannel = channel;
 		}
 
 		private static void MoveToScreen(IntPtr hWnd, Screen screen)
