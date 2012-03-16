@@ -37,25 +37,9 @@ namespace MyStreams
 
 		private void Main_KeyDown(object sender, KeyEventArgs e)
 		{
-			var selectedRow = GetSelectedRow();
-
 			if (e.KeyCode == Keys.Enter)
 			{
 				OpenSelectedChannel();
-
-				e.Handled = true;
-			}
-			else if (e.KeyCode == Keys.PageUp && selectedRow != null)
-			{
-				if (selectedRow.Index > 0)
-					listingsGrid.Rows[selectedRow.Index - 1].Selected = true;
-
-				e.Handled = true;
-			}
-			else if (e.KeyCode == Keys.PageDown && selectedRow != null)
-			{
-				if (selectedRow.Index < listingsGrid.Rows.Count - 1)
-					listingsGrid.Rows[selectedRow.Index + 1].Selected = true;
 
 				e.Handled = true;
 			}
