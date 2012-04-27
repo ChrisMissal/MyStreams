@@ -21,6 +21,7 @@ namespace MyStreams
 		private DateTime _endTime;
 		private int? _previousChannel;
 		private int? _currentChannel;
+		private bool _highQuality = true;
 
 		public Main()
 		{
@@ -106,6 +107,14 @@ namespace MyStreams
 				SetStartTimeToCurrentHalfHour();
 
 				DisplayListings();
+			}
+			else if (e.KeyCode == Keys.L)
+			{
+				_highQuality = false;
+			}
+			else if (e.KeyCode == Keys.H)
+			{
+				_highQuality = true;
 			}
 		}
 
@@ -201,7 +210,7 @@ namespace MyStreams
 
 			const string tld = "tv";
 
-			var url = "http://mystreams." + tld + "/go/stream.php?hd=1&server=2&stream=" + channel;
+			var url = string.Format("http://mystreams.{0}/go/stream.php?hd={1}&server=2&stream={2}", tld, _highQuality ? "1" : "0", channel);
 			_browser.GoTo(url);
 
 			_browser.DomContainer.Eval("$f(0).play(); document.body.scroll = 'no';");
@@ -209,8 +218,11 @@ namespace MyStreams
 			var screenRectangle = screen.Bounds;
 			Cursor.Position = new Point(screenRectangle.Right, screenRectangle.Height/2);
 
-			_previousChannel = _currentChannel;
-			_currentChannel = channel;
+			if (_currentChannel != channel)
+			{
+				_previousChannel = _currentChannel;
+				_currentChannel = channel;
+			}
 		}
 
 		private static void MoveToScreen(IntPtr hWnd, Screen screen)
