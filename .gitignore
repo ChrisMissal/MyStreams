@@ -8,5 +8,6 @@ _ReSharper.*
 debug
 release
 *.ReSharper.user
+*.DotSettings.user
 ~*
 packages/

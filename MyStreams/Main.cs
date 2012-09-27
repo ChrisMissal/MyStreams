@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 using SHDocVw;
@@ -209,20 +210,58 @@ namespace MyStreams
 			Win32.SetForegroundWindow(_browserHWnd);
 
 			const string tld = "tv";
-
-			var url = string.Format("http://mystreams.{0}/go/stream.php?hd={1}&server=2&stream={2}", tld, _highQuality ? "1" : "0", channel);
+			
+			var url = string.Format("http://mystreams.{0}/go/stream3.php?hd={1}&server=2&stream={2}", tld, _highQuality ? "1" : "0", channel);
+			
 			_browser.GoTo(url);
 
-			_browser.DomContainer.Eval("$f(0).play(); document.body.scroll = 'no';");
-
 			var screenRectangle = screen.Bounds;
-			Cursor.Position = new Point(screenRectangle.Right, screenRectangle.Height/2);
+
+			Thread.Sleep(1000);
+
+			var hdState = _browser.DomContainer.Eval("jwplayer().getPlaylistItem(0)['hd.state'];");
+
+			if (!bool.Parse(hdState))
+			{
+				Cursor.Position = new Point(screenRectangle.Right - 50, screenRectangle.Top + 50);
+
+				LeftClick();
+			}
+
+			_browser.DomContainer.Eval("jwplayer().play(); document.body.scroll = 'no'; document.body.focus();");
+
+			Cursor.Position = new Point(screenRectangle.Right, screenRectangle.Bottom);
 
 			if (_currentChannel != channel)
 			{
 				_previousChannel = _currentChannel;
 				_currentChannel = channel;
 			}
+		}
+
+		private static void LeftClick()
+		{
+			SendMouseEvent(Win32.MOUSEEVENTF_LEFTDOWN);
+			SendMouseEvent(Win32.MOUSEEVENTF_LEFTUP);
+		}
+
+		private static void SendMouseEvent(uint type)
+		{
+			var input = new Win32.INPUT
+			{
+				type = Win32.INPUT_MOUSE,
+				mi = new Win32.MOUSEINPUT
+				{
+					dx = 0,
+					dy = 0,
+					mouseData = 0,
+					time = 0,
+					dwExtraInfo = IntPtr.Zero,
+					dwFlags = type
+				}
+			};
+
+			Win32.SendInput(1, ref input, Marshal.SizeOf(input));
 		}
 
 		private static void MoveToScreen(IntPtr hWnd, Screen screen)
